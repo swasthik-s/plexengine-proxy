@@ -1,7 +1,7 @@
-# simple-proxy
+# Vidninja.pro
 
-Simple reverse proxy to bypass CORS, used by [movie-web](https://movie-web.app)/[P-Stream](https://pstream.org).
-Read the docs at https://docs.pstream.org/proxy/introduction
+Reverse proxy to bypass CORS (https://vidninja.pro).
+Read the docs at https://docs.vidninja.pro/proxy/introduction
 
 ---
 

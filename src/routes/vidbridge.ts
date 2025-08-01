@@ -206,9 +206,9 @@ async function proxyM3U8(event: any) {
   }
 
   try {
-    console.log(`[M3U8-PROXY] Processing request for URL: ${url}`);
-    console.log(`[M3U8-PROXY] Headers param: ${headersParam}`);
-    console.log(`[M3U8-PROXY] Parsed headers:`, headers);
+    console.log(`[vidbridge] Processing request for URL: ${url}`);
+    console.log(`[vidbridge] Headers param: ${headersParam}`);
+    console.log(`[vidbridge] Parsed headers:`, headers);
 
     const response = await globalThis.fetch(url, {
       headers: {
@@ -217,8 +217,8 @@ async function proxyM3U8(event: any) {
       }
     });
 
-    console.log(`[M3U8-PROXY] Response status: ${response.status} ${response.statusText}`);
-    console.log(`[M3U8-PROXY] Response headers:`, Object.fromEntries(response.headers.entries()));
+    console.log(`[vidbridge] Response status: ${response.status} ${response.statusText}`);
+    console.log(`[vidbridge] Response headers:`, Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
@@ -233,15 +233,15 @@ async function proxyM3U8(event: any) {
     }
 
     const m3u8Content = await response.text();
-    console.log(`[M3U8-PROXY] M3U8 content length: ${m3u8Content.length}`);
-    console.log(`[M3U8-PROXY] M3U8 content preview: ${m3u8Content.substring(0, 200)}`);
+    console.log(`[vidbridge] M3U8 content length: ${m3u8Content.length}`);
+    console.log(`[vidbridge] M3U8 content preview: ${m3u8Content.substring(0, 200)}`);
 
     // Get the base URL for the host
     const host = getRequestHost(event);
     const proto = getRequestProtocol(event);
     const baseProxyUrl = `${proto}://${host}`;
 
-    console.log(`[M3U8-PROXY] Base proxy URL: ${baseProxyUrl}`);
+    console.log(`[vidbridge] Base proxy URL: ${baseProxyUrl}`);
 
     if (m3u8Content.includes("RESOLUTION=")) {
       // This is a master playlist with multiple quality variants
@@ -265,7 +265,7 @@ async function proxyM3U8(event: any) {
             const regex = /https?:\/\/[^\""\s]+/g;
             const mediaUrl = regex.exec(line)?.[0];
             if (mediaUrl) {
-              const proxyMediaUrl = `${baseProxyUrl}/m3u8-proxy?url=${encodeURIComponent(mediaUrl)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
+              const proxyMediaUrl = `${baseProxyUrl}/vidbridge?url=${encodeURIComponent(mediaUrl)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
               newLines.push(line.replace(mediaUrl, proxyMediaUrl));
             } else {
               newLines.push(line);
@@ -277,7 +277,7 @@ async function proxyM3U8(event: any) {
           // This is a quality variant URL
           const variantUrl = parseURL(line, url);
           if (variantUrl) {
-            newLines.push(`${baseProxyUrl}/m3u8-proxy?url=${encodeURIComponent(variantUrl)}&headers=${encodeURIComponent(JSON.stringify(headers))}`);
+            newLines.push(`${baseProxyUrl}/vidbridge?url=${encodeURIComponent(variantUrl)}&headers=${encodeURIComponent(JSON.stringify(headers))}`);
           } else {
             newLines.push(line);
           }
