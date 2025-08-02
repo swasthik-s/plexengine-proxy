@@ -37,29 +37,28 @@ const segmentCache: Map<string, CacheEntry> = new Map();
  */
 function decryptStreamToken(token: string): StreamToken | null {
   try {
-    // Check if it's a simple base64 token (fallback for compatibility)
-    if (!token.includes('U2FsdGVkX1')) {
-      try {
-        // Try simple base64 decode
-        const restored = token.replace(/-/g, '+').replace(/_/g, '/');
-        const padded = restored + '=='.substring(0, (4 - (restored.length % 4)) % 4);
-        const decoded = JSON.parse(atob(padded));
+    // Simple base64 decode for tokens from vidsrcvip.ts
+    const restored = token.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = restored + '=='.substring(0, (4 - (restored.length % 4)) % 4);
+    const decoded = JSON.parse(atob(padded));
 
-        if (decoded.u && decoded.e) {
-          return {
-            url: decoded.u,
-            expires: decoded.e,
-            headers: decoded.h
-          };
-        }
-      } catch {
-        // Not a simple token, continue to other decryption methods
-      }
+    // Handle both formats: {u, t, e, h} from vidsrcvip.ts and {url, expires, headers} from createStreamToken
+    if (decoded.u && decoded.e) {
+      // Format from vidsrcvip.ts: {u: url, t: timestamp, e: expires, h: headers}
+      return {
+        url: decoded.u,
+        expires: decoded.e,
+        headers: decoded.h
+      };
+    } else if (decoded.url && decoded.expires) {
+      // Format from createStreamToken: {url, expires, headers}
+      return {
+        url: decoded.url,
+        expires: decoded.expires,
+        headers: decoded.headers
+      };
     }
 
-    // For now, we'll focus on simple base64 tokens since Web Crypto API requires async
-    // We can add AES encryption later if needed
-    console.log('Complex token decryption not implemented yet, using simple base64 only');
     return null;
   } catch (error) {
     console.error('Failed to decrypt token:', error);
@@ -269,6 +268,14 @@ async function handleObfuscatedStream(event: any) {
     return sendError(event, createError({
       statusCode: 401,
       statusMessage: 'Invalid or expired token'
+    }));
+  }
+
+  // Check expiration
+  if (Date.now() > streamData.expires) {
+    return sendError(event, createError({
+      statusCode: 401,
+      statusMessage: 'Token expired'
     }));
   }
 
