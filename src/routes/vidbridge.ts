@@ -267,7 +267,12 @@ async function handleObfuscatedStream(event: any) {
   if (!streamData) {
     return sendError(event, createError({
       statusCode: 401,
-      statusMessage: 'Invalid or expired token'
+      statusMessage: 'Invalid or expired token',
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': '*'
+      }
     }));
   }
 
@@ -275,7 +280,12 @@ async function handleObfuscatedStream(event: any) {
   if (Date.now() > streamData.expires) {
     return sendError(event, createError({
       statusCode: 401,
-      statusMessage: 'Token expired'
+      statusMessage: 'Token expired',
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': '*'
+      }
     }));
   }
 
@@ -669,7 +679,19 @@ export function handleCreateToken(event: any) {
 
 export default defineEventHandler(async (event) => {
   // Handle CORS preflight requests
-  if (isPreflightRequest(event)) return handleCors(event, {});
+  if (isPreflightRequest(event)) return handleCors(event, {
+    origin: '*',
+    methods: ['GET', 'POST', 'OPTIONS'],
+    headers: ['*']
+  });
+
+  // Add CORS headers to all responses
+  setResponseHeaders(event, {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': '*',
+    'Access-Control-Max-Age': '86400'
+  });
 
   const pathname = event.path || '';
 
