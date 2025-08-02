@@ -15,7 +15,7 @@ import crypto from 'crypto-js';
 const isCacheDisabled = () => process.env.DISABLE_CACHE === 'true';
 
 // URL obfuscation configuration
-const STREAM_SECRET_KEY = process.env.STREAM_SECRET_KEY || 'spGTzPz2aUyWB4onMFx9C3zVVBPlhbOfLAeA9ayZGCnIvJLvsZF6bTsY6limoElX';
+const STREAM_SECRET_KEY = process.env.STREAM_SECRET_KEY || 'vidninja-secret-key-change-this';
 
 interface StreamToken {
   url: string;
@@ -45,7 +45,7 @@ function decryptStreamToken(token: string): StreamToken | null {
         const restored = token.replace(/-/g, '+').replace(/_/g, '/');
         const padded = restored + '=='.substring(0, (4 - (restored.length % 4)) % 4);
         const decoded = JSON.parse(atob(padded));
-        
+
         if (decoded.u && decoded.e) {
           return {
             url: decoded.u,
@@ -61,7 +61,7 @@ function decryptStreamToken(token: string): StreamToken | null {
     // AES decryption for fully encrypted tokens
     const base64Token = token.replace(/-/g, '+').replace(/_/g, '/');
     const paddedToken = base64Token + '=='.substring(0, (4 - (base64Token.length % 4)) % 4);
-    
+
     let decrypted: string;
     try {
       decrypted = crypto.AES.decrypt(atob(paddedToken), STREAM_SECRET_KEY).toString(crypto.enc.Utf8);
@@ -69,7 +69,7 @@ function decryptStreamToken(token: string): StreamToken | null {
       // Try direct decryption without base64 decode
       decrypted = crypto.AES.decrypt(paddedToken, STREAM_SECRET_KEY).toString(crypto.enc.Utf8);
     }
-    
+
     const tokenData: StreamToken = JSON.parse(decrypted);
 
     // Check expiration
@@ -555,7 +555,7 @@ async function proxyTsSegment(event: any) {
     const cached = getCachedSegment(actualUrl);
     if (cached) {
       console.log(`[ts-proxy] Serving from cache: ${actualUrl}`);
-      
+
       // Set cached headers
       setResponseHeaders(event, {
         ...cached.headers,
