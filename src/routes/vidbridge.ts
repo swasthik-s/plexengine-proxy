@@ -9,7 +9,6 @@ import {
   getRequestHost,
   getRequestProtocol
 } from 'h3';
-import crypto from 'crypto-js';
 
 // Check if caching is disabled via environment variable
 const isCacheDisabled = () => process.env.DISABLE_CACHE === 'true';
@@ -54,31 +53,14 @@ function decryptStreamToken(token: string): StreamToken | null {
           };
         }
       } catch {
-        // Not a simple token, continue to AES decryption
+        // Not a simple token, continue to other decryption methods
       }
     }
 
-    // AES decryption for fully encrypted tokens
-    const base64Token = token.replace(/-/g, '+').replace(/_/g, '/');
-    const paddedToken = base64Token + '=='.substring(0, (4 - (base64Token.length % 4)) % 4);
-
-    let decrypted: string;
-    try {
-      decrypted = crypto.AES.decrypt(atob(paddedToken), STREAM_SECRET_KEY).toString(crypto.enc.Utf8);
-    } catch {
-      // Try direct decryption without base64 decode
-      decrypted = crypto.AES.decrypt(paddedToken, STREAM_SECRET_KEY).toString(crypto.enc.Utf8);
-    }
-
-    const tokenData: StreamToken = JSON.parse(decrypted);
-
-    // Check expiration
-    if (Date.now() > tokenData.expires) {
-      console.log('Token expired');
-      return null;
-    }
-
-    return tokenData;
+    // For now, we'll focus on simple base64 tokens since Web Crypto API requires async
+    // We can add AES encryption later if needed
+    console.log('Complex token decryption not implemented yet, using simple base64 only');
+    return null;
   } catch (error) {
     console.error('Failed to decrypt token:', error);
     return null;
@@ -95,11 +77,12 @@ function createStreamToken(url: string, headers?: Record<string, string>, ttlMin
     headers
   };
 
-  // Encrypt the token
-  const encrypted = crypto.AES.encrypt(JSON.stringify(token), STREAM_SECRET_KEY).toString();
+  // For now, use simple base64 encoding for compatibility
+  // We can add AES encryption later using Web Crypto API if needed
+  const tokenString = JSON.stringify(token);
 
-  // Make URL-safe
-  const urlSafeToken = btoa(encrypted)
+  // Make URL-safe base64
+  const urlSafeToken = btoa(tokenString)
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '');
