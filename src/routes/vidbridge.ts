@@ -15,7 +15,7 @@ import crypto from 'crypto-js';
 const isCacheDisabled = () => process.env.DISABLE_CACHE === 'true';
 
 // URL obfuscation configuration
-const STREAM_SECRET_KEY = process.env.STREAM_SECRET_KEY || 'vidninja-secret-key-change-this';
+const STREAM_SECRET_KEY = process.env.STREAM_SECRET_KEY || 'spGTzPz2aUyWB4onMFx9C3zVVBPlhbOfLAeA9ayZGCnIvJLvsZF6bTsY6limoElX';
 
 interface StreamToken {
   url: string;
