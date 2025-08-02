@@ -254,6 +254,7 @@ async function handleObfuscatedStream(event: any) {
   const token = getQuery(event).token as string;
 
   if (!token) {
+    event.node.res.setHeader('Access-Control-Allow-Origin', '*');
     return sendError(event, createError({
       statusCode: 400,
       statusMessage: 'Token parameter is required'
@@ -265,27 +266,19 @@ async function handleObfuscatedStream(event: any) {
   // Decrypt the token
   const streamData = decryptStreamToken(token);
   if (!streamData) {
+    event.node.res.setHeader('Access-Control-Allow-Origin', '*');
     return sendError(event, createError({
       statusCode: 401,
-      statusMessage: 'Invalid or expired token',
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': '*'
-      }
+      statusMessage: 'Invalid or expired token'
     }));
   }
 
   // Check expiration
   if (Date.now() > streamData.expires) {
+    event.node.res.setHeader('Access-Control-Allow-Origin', '*');
     return sendError(event, createError({
       statusCode: 401,
-      statusMessage: 'Token expired',
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': '*'
-      }
+      statusMessage: 'Token expired'
     }));
   }
 
@@ -678,46 +671,52 @@ export function handleCreateToken(event: any) {
 }
 
 export default defineEventHandler(async (event) => {
-  // Handle CORS preflight requests
-  if (isPreflightRequest(event)) return handleCors(event, {
-    origin: '*',
-    methods: ['GET', 'POST', 'OPTIONS'],
-    headers: ['*']
-  });
+  // Set CORS headers immediately for all requests
+  event.node.res.setHeader('Access-Control-Allow-Origin', '*');
+  event.node.res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  event.node.res.setHeader('Access-Control-Allow-Headers', '*');
+  event.node.res.setHeader('Access-Control-Max-Age', '86400');
 
-  // Add CORS headers to all responses
-  setResponseHeaders(event, {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': '*',
-    'Access-Control-Max-Age': '86400'
-  });
+  // Handle CORS preflight requests
+  if (isPreflightRequest(event)) {
+    event.node.res.statusCode = 200;
+    event.node.res.end();
+    return;
+  }
 
   const pathname = event.path || '';
 
-  // Route requests to appropriate handlers
-  if (pathname === '/cache-stats') {
-    return handleCacheStats(event);
-  } else if (pathname === '/create-token') {
-    return handleCreateToken(event);
-  } else if (pathname === '/stream') {
-    // Handle obfuscated stream requests
-    const token = getQuery(event).token as string;
-    if (token) {
-      return handleObfuscatedStream(event);
-    } else {
-      // Fallback to regular proxy for backward compatibility
+  try {
+    // Route requests to appropriate handlers
+    if (pathname === '/cache-stats') {
+      return handleCacheStats(event);
+    } else if (pathname === '/create-token') {
+      return handleCreateToken(event);
+    } else if (pathname === '/stream') {
+      // Handle obfuscated stream requests
+      const token = getQuery(event).token as string;
+      if (token) {
+        return handleObfuscatedStream(event);
+      } else {
+        // Fallback to regular proxy for backward compatibility
+        return await proxyM3U8(event);
+      }
+    } else if (pathname === '/ts-proxy') {
+      return await proxyTsSegment(event);
+    } else if (pathname === '/vidbridge' || pathname === '/') {
+      // Default endpoint for backward compatibility
       return await proxyM3U8(event);
     }
-  } else if (pathname === '/ts-proxy') {
-    return await proxyTsSegment(event);
-  } else if (pathname === '/vidbridge' || pathname === '/') {
-    // Default endpoint for backward compatibility
-    return await proxyM3U8(event);
-  }
 
-  return sendError(event, createError({
-    statusCode: 404,
-    statusMessage: 'Not Found'
-  }));
+    return sendError(event, createError({
+      statusCode: 404,
+      statusMessage: 'Not Found'
+    }));
+  } catch (error: any) {
+    console.error('Handler error:', error);
+    return sendError(event, createError({
+      statusCode: 500,
+      statusMessage: error.message || 'Internal Server Error'
+    }));
+  }
 });
