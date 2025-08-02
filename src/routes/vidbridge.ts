@@ -251,10 +251,16 @@ export function getCacheStats() {
  * Handle obfuscated stream requests - NEW ENDPOINT
  */
 async function handleObfuscatedStream(event: any) {
+  // Ensure CORS headers are set
+  try {
+    event.node.res.setHeader('Access-Control-Allow-Origin', '*');
+    event.node.res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD');
+    event.node.res.setHeader('Access-Control-Allow-Headers', '*');
+  } catch { }
+
   const token = getQuery(event).token as string;
 
   if (!token) {
-    event.node.res.setHeader('Access-Control-Allow-Origin', '*');
     return sendError(event, createError({
       statusCode: 400,
       statusMessage: 'Token parameter is required'
@@ -266,7 +272,6 @@ async function handleObfuscatedStream(event: any) {
   // Decrypt the token
   const streamData = decryptStreamToken(token);
   if (!streamData) {
-    event.node.res.setHeader('Access-Control-Allow-Origin', '*');
     return sendError(event, createError({
       statusCode: 401,
       statusMessage: 'Invalid or expired token'
@@ -275,7 +280,6 @@ async function handleObfuscatedStream(event: any) {
 
   // Check expiration
   if (Date.now() > streamData.expires) {
-    event.node.res.setHeader('Access-Control-Allow-Origin', '*');
     return sendError(event, createError({
       statusCode: 401,
       statusMessage: 'Token expired'
@@ -409,13 +413,13 @@ async function proxyM3U8(event: any) {
       }
 
       // Set appropriate headers
-      setResponseHeaders(event, {
-        'Content-Type': 'application/vnd.apple.mpegurl',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': '*',
-        'Access-Control-Allow-Methods': '*',
-        'Cache-Control': 'no-cache, no-store, must-revalidate'
-      });
+      try {
+        event.node.res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+        event.node.res.setHeader('Access-Control-Allow-Origin', '*');
+        event.node.res.setHeader('Access-Control-Allow-Headers', '*');
+        event.node.res.setHeader('Access-Control-Allow-Methods', '*');
+        event.node.res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      } catch { }
 
       return newLines.join("\n");
     } else {
@@ -483,13 +487,13 @@ async function proxyM3U8(event: any) {
       }
 
       // Set appropriate headers
-      setResponseHeaders(event, {
-        'Content-Type': 'application/vnd.apple.mpegurl',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': '*',
-        'Access-Control-Allow-Methods': '*',
-        'Cache-Control': 'no-cache, no-store, must-revalidate'
-      });
+      try {
+        event.node.res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+        event.node.res.setHeader('Access-Control-Allow-Origin', '*');
+        event.node.res.setHeader('Access-Control-Allow-Headers', '*');
+        event.node.res.setHeader('Access-Control-Allow-Methods', '*');
+        event.node.res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      } catch { }
 
       return newLines.join("\n");
     }
@@ -550,12 +554,14 @@ async function proxyTsSegment(event: any) {
       console.log(`[ts-proxy] Serving from cache: ${actualUrl}`);
 
       // Set cached headers
-      setResponseHeaders(event, {
-        ...cached.headers,
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': '*',
-        'Access-Control-Allow-Methods': '*',
-      });
+      try {
+        Object.entries(cached.headers).forEach(([key, value]) => {
+          event.node.res.setHeader(key, value);
+        });
+        event.node.res.setHeader('Access-Control-Allow-Origin', '*');
+        event.node.res.setHeader('Access-Control-Allow-Headers', '*');
+        event.node.res.setHeader('Access-Control-Allow-Methods', '*');
+      } catch { }
 
       return cached.data;
     }
@@ -593,7 +599,11 @@ async function proxyTsSegment(event: any) {
       }
     });
 
-    setResponseHeaders(event, responseHeaders);
+    try {
+      Object.entries(responseHeaders).forEach(([key, value]) => {
+        event.node.res.setHeader(key, value);
+      });
+    } catch { }
 
     // Cache the segment if caching is enabled
     if (!isCacheDisabled()) {
@@ -618,10 +628,11 @@ async function proxyTsSegment(event: any) {
 
 export function handleCacheStats(event: any) {
   cleanupCache();
-  setResponseHeaders(event, {
-    'Content-Type': 'application/json',
-    'Cache-Control': 'no-cache, no-store, must-revalidate'
-  });
+  try {
+    event.node.res.setHeader('Content-Type', 'application/json');
+    event.node.res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    event.node.res.setHeader('Access-Control-Allow-Origin', '*');
+  } catch { }
   return getCacheStats();
 }
 
@@ -655,11 +666,11 @@ export function handleCreateToken(event: any) {
   const proto = getRequestProtocol(event);
   const obfuscatedUrl = `${proto}://${host}/stream?token=${token}`;
 
-  setResponseHeaders(event, {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Cache-Control': 'no-cache, no-store, must-revalidate'
-  });
+  try {
+    event.node.res.setHeader('Content-Type', 'application/json');
+    event.node.res.setHeader('Access-Control-Allow-Origin', '*');
+    event.node.res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  } catch { }
 
   return {
     originalUrl: url,
@@ -671,14 +682,19 @@ export function handleCreateToken(event: any) {
 }
 
 export default defineEventHandler(async (event) => {
-  // Set CORS headers immediately for all requests
-  event.node.res.setHeader('Access-Control-Allow-Origin', '*');
-  event.node.res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  event.node.res.setHeader('Access-Control-Allow-Headers', '*');
-  event.node.res.setHeader('Access-Control-Max-Age', '86400');
+  // Set CORS headers immediately for all requests - even before any processing
+  try {
+    event.node.res.setHeader('Access-Control-Allow-Origin', '*');
+    event.node.res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD, PUT, DELETE');
+    event.node.res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma');
+    event.node.res.setHeader('Access-Control-Max-Age', '86400');
+    event.node.res.setHeader('Vary', 'Origin');
+  } catch (corsError) {
+    console.error('Failed to set CORS headers:', corsError);
+  }
 
-  // Handle CORS preflight requests
-  if (isPreflightRequest(event)) {
+  // Handle CORS preflight requests immediately
+  if (event.node.req.method === 'OPTIONS') {
     event.node.res.statusCode = 200;
     event.node.res.end();
     return;
@@ -714,6 +730,11 @@ export default defineEventHandler(async (event) => {
     }));
   } catch (error: any) {
     console.error('Handler error:', error);
+    // Ensure CORS headers are set even on errors
+    try {
+      event.node.res.setHeader('Access-Control-Allow-Origin', '*');
+    } catch { }
+
     return sendError(event, createError({
       statusCode: 500,
       statusMessage: error.message || 'Internal Server Error'
