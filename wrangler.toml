@@ -1,4 +1,5 @@
-name = "simple-proxy"
+name = "Vidninja-proxy"
 main = "./.output/server/index.mjs"
 workers_dev = true
 compatibility_date = "2022-09-10"
+STREAM_SECRET_KEY="spGTzPz2aUyWB4onMFx9C3zVVBPlhbOfLAeA9ayZGCnIvJLvsZF6bTsY6limoElX"
